@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Lumi ✨ IA Fofa</title>
+<title>Lumi ✨ IA</title>
 
 <style>
 * { box-sizing: border-box; }
@@ -11,7 +11,7 @@
 body {
   margin: 0;
   height: 100vh;
-  font-family: system-ui, -apple-system, Segoe UI, sans-serif;
+  font-family: system-ui, sans-serif;
   background: linear-gradient(135deg, #ffe4f2, #e3f0ff);
   display: flex;
   align-items: center;
@@ -33,10 +33,9 @@ body {
 .header {
   background: linear-gradient(135deg, #ff9ecf, #8ecbff);
   color: white;
-  padding: 16px;
+  padding: 14px;
   text-align: center;
   font-weight: bold;
-  font-size: 18px;
 }
 
 .messages {
@@ -52,7 +51,6 @@ body {
   margin-bottom: 10px;
   font-size: 14px;
   line-height: 1.4;
-  word-wrap: break-word;
 }
 
 .user {
@@ -78,37 +76,24 @@ input {
   padding: 10px;
   border-radius: 12px;
   background: #f5f5f5;
-  font-size: 14px;
 }
 
 button {
   margin-left: 8px;
   border: none;
   border-radius: 12px;
-  padding: 0 18px;
+  padding: 0 16px;
   background: #ff8ac7;
   color: white;
-  font-size: 14px;
   cursor: pointer;
-}
-
-button:disabled {
-  opacity: 0.6;
-}
-
-.loading {
-  font-size: 12px;
-  opacity: 0.7;
 }
 </style>
 </head>
 
 <body>
 <div class="chat">
-  <div class="header">Lumi ✨ sua IA fofa</div>
-
+  <div class="header">Lumi ✨</div>
   <div class="messages" id="messages"></div>
-
   <div class="input-area">
     <input id="input" placeholder="Digite algo..." />
     <button id="send">Enviar</button>
@@ -122,6 +107,8 @@ const messages = document.getElementById("messages");
 const input = document.getElementById("input");
 const sendBtn = document.getElementById("send");
 
+let engine = null;
+
 function addMsg(text, cls) {
   const div = document.createElement("div");
   div.className = "msg " + cls;
@@ -130,25 +117,36 @@ function addMsg(text, cls) {
   messages.scrollTop = messages.scrollHeight;
 }
 
-addMsg("Oi! Eu sou a Lumi ✨ Estou acordando... um segundinho 🥰", "bot");
+addMsg("Oi! Eu sou a Lumi ✨ Estou iniciando…", "bot");
 
-sendBtn.disabled = true;
+/* EVENTOS — SEMPRE ATIVOS */
+sendBtn.addEventListener("click", send);
+input.addEventListener("keydown", e => {
+  if (e.key === "Enter") send();
+});
 
-const engine = await CreateMLCEngine(
-  "Llama-3-8B-Instruct-q4f16_1"
-);
-
-sendBtn.disabled = false;
-messages.lastChild.textContent = "Prontinho! Pode falar comigo ✨😊";
-
+/* PROMPT */
 const SYSTEM_PROMPT = `
 Você é Lumi ✨, uma IA fofa, gentil e educada.
-Fale sempre em português do Brasil.
-Use emojis leves às vezes (✨🌸😊), sem exagerar.
-Seja clara, paciente e carinhosa.
-Nunca seja rude ou agressiva.
+Responda em português do Brasil.
+Use emojis leves (✨😊).
+Nunca seja rude.
 `;
 
+/* CARREGAMENTO SEGURO DO MODELO */
+(async () => {
+  try {
+    engine = await CreateMLCEngine(
+      "Qwen2-1.5B-Instruct-q4f16_1",
+      { device: "wasm" }
+    );
+    addMsg("Prontinho! Já posso conversar 💖", "bot");
+  } catch (e) {
+    addMsg("Não consegui carregar a IA 😿 Mas o chat continua funcionando.", "bot");
+  }
+})();
+
+/* ENVIO */
 async function send() {
   const text = input.value.trim();
   if (!text) return;
@@ -156,13 +154,12 @@ async function send() {
   input.value = "";
   addMsg(text, "user");
 
-  const loading = document.createElement("div");
-  loading.className = "msg bot loading";
-  loading.textContent = "Pensando com carinho... 💭✨";
-  messages.appendChild(loading);
-  messages.scrollTop = messages.scrollHeight;
+  if (!engine) {
+    addMsg("Ainda estou tentando acordar… 💤", "bot");
+    return;
+  }
 
-  sendBtn.disabled = true;
+  addMsg("Pensando com carinho… 💭", "bot");
 
   try {
     const res = await engine.chat.completions.create({
@@ -174,20 +171,14 @@ async function send() {
       top_p: 0.9
     });
 
-    loading.remove();
+    messages.lastChild.remove();
     addMsg(res.choices[0].message.content, "bot");
+
   } catch (e) {
-    loading.remove();
-    addMsg("Ops… algo deu errado 😿 Tente novamente.", "bot");
+    messages.lastChild.remove();
+    addMsg("Ops… algo deu errado 😿", "bot");
   }
-
-  sendBtn.disabled = false;
 }
-
-sendBtn.onclick = send;
-input.addEventListener("keydown", e => {
-  if (e.key === "Enter") send();
-});
 </script>
 </body>
 </html>
